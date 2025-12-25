@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "Highlight Summarizer",
+    "version": "1.0",
+    "description": "Bôi đen text để tóm tắt local",
+    "permissions": [
+        "activeTab"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ]
+}

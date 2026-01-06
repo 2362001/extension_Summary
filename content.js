@@ -1,10 +1,17 @@
 let tooltip;
 
 document.addEventListener("mouseup", (e) => {
-  // 1. Nếu click vào chính cái tooltip thì không làm gì cả (để người dùng có thể copy text trong đó)
-  if (tooltip && tooltip.contains(e.target)) return;
+  // 1. Kiểm tra nếu đang click vào tooltip hoặc các thành phần con của nó
+  if (tooltip && tooltip.contains(e.target)) {
+    // Nếu click vào nút X (close-btn)
+    if (e.target.classList.contains("summary-close-btn")) {
+      tooltip.remove();
+      tooltip = null;
+    }
+    return;
+  }
 
-  // 2. Xóa tooltip cũ nếu có khi click ra ngoài
+  // 2. Click ra ngoài thì xóa tooltip cũ
   if (tooltip) {
     tooltip.remove();
     tooltip = null;
@@ -20,27 +27,66 @@ document.addEventListener("mouseup", (e) => {
   const range = selection.getRangeAt(0);
   const rect = range.getBoundingClientRect();
 
-  // 4. Tạo tooltip mới
+  // 4. Tạo tooltip mới với cấu trúc có nút Close
   tooltip = document.createElement("div");
-  tooltip.innerHTML = "⏳ Đang tóm tắt...";
-  tooltip.style.position = "fixed";
-  tooltip.style.top = `${rect.bottom + window.scrollY + 8}px`; // Thêm window.scrollY để cố định đúng vị trí khi scroll
-  tooltip.style.left = `${rect.left + window.scrollX}px`;
-  tooltip.style.zIndex = 999999;
-  tooltip.style.maxWidth = "320px";
-  tooltip.style.background = "#111";
-  tooltip.style.color = "#fff";
-  tooltip.style.padding = "10px 12px";
-  tooltip.style.borderRadius = "8px";
-  tooltip.style.fontSize = "13px";
-  tooltip.style.lineHeight = "1.4";
-  tooltip.style.boxShadow = "0 4px 12px rgba(0,0,0,.3)";
+  tooltip.className = "summary-extension-tooltip";
 
+  // Style cho container chính
+  Object.assign(tooltip.style, {
+    position: "fixed",
+    top: `${rect.bottom + window.scrollY + 10}px`,
+    left: `${rect.left + window.scrollX}px`,
+    zIndex: "999999",
+    maxWidth: "350px",
+    minWidth: "200px",
+    background: "#1e1e1e",
+    color: "#ffffff",
+    padding: "20px 15px 15px 15px",
+    borderRadius: "12px",
+    fontSize: "14px",
+    lineHeight: "1.5",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+    fontFamily: "sans-serif",
+    border: "1px solid #333",
+  });
+
+  // Nút đóng (X)
+  const closeBtn = document.createElement("div");
+  closeBtn.innerHTML = "&times;";
+  closeBtn.className = "summary-close-btn";
+  Object.assign(closeBtn.style, {
+    position: "absolute",
+    top: "5px",
+    right: "10px",
+    cursor: "pointer",
+    fontSize: "20px",
+    color: "#888",
+    fontWeight: "bold",
+    transition: "color 0.2s",
+  });
+  closeBtn.onmouseover = () => (closeBtn.style.color = "#fff");
+  closeBtn.onmouseout = () => (closeBtn.style.color = "#888");
+
+  // Phần nội dung
+  const content = document.createElement("div");
+  content.className = "summary-content";
+  content.innerHTML = "<i>⏳ Đang tóm tắt nội dung...</i>";
+
+  tooltip.appendChild(closeBtn);
+  tooltip.appendChild(content);
   document.body.appendChild(tooltip);
 
+  // 5. Gọi API
   chrome.runtime.sendMessage({ type: "SUMMARIZE", text }, (res) => {
-    if (tooltip) {
-      tooltip.innerHTML = `<b>Tóm tắt:</b><br>${res.summary}`;
+    if (tooltip && content) {
+      if (res && res.summary) {
+        // Render markdown-like (thay đổi xuống dòng thành <br>)
+        const formattedSummary = res.summary.replace(/\n/g, "<br>");
+        content.innerHTML = `<b style="color: #4facfe;">Tóm tắt:</b><br>${formattedSummary}`;
+      } else {
+        content.innerHTML =
+          "<span style='color: #ff4b2b;'>Lỗi: Không thể lấy dữ liệu tóm tắt.</span>";
+      }
     }
   });
 });

@@ -110,21 +110,21 @@ document.addEventListener("mouseup", (e) => {
     };
 
     chrome.runtime.sendMessage({ type: "SUMMARIZE", text }, (res) => {
-      if (lastSelection === text) {
-        // Đảm bảo vẫn là đoạn text đó
+      if (lastSelection === text && pendingSummary) {
         pendingSummary = {
           status: "ready",
-          summary: res && res.summary ? res.summary : null,
+          summary:
+            res && res.summary
+              ? res.summary
+              : "Lỗi: Server không phản hồi hoặc gặp sự cố.",
           rect: pendingSummary.rect,
         };
-        // Nếu lúc này người dùng đã nhấn Shift trước đó mà đang đợi tải
-        if (
-          tooltip &&
-          tooltip
-            .querySelector(".summary-content")
-            .innerHTML.includes("Đang tải")
-        ) {
-          updateTooltipContent();
+
+        if (tooltip) {
+          const contentDiv = tooltip.querySelector(".summary-content");
+          if (contentDiv && contentDiv.innerHTML.includes("Đang tải")) {
+            updateTooltipContent();
+          }
         }
       }
     });

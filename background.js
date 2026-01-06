@@ -1,54 +1,44 @@
-function summarizeLocal(text, maxSentences = 3) {
-    const cleanText = text
-        .replace(/\s+/g, " ")
-        .replace(/\n+/g, " ")
-        .trim();
+const API_URL = "http://localhost:5050/api/summarize";
 
-    const sentences = cleanText.match(/[^.!?]+[.!?]?/g);
-    if (!sentences || sentences.length <= maxSentences) {
-        return cleanText;
-    }
-
-    const stopWords = new Set([
-        "là", "và", "của", "có", "cho", "một", "những", "các", "được", "trong",
-        "khi", "đến", "với", "về", "the", "is", "are", "to", "of", "and", "in"
-    ]);
-
-    const wordFreq = {};
-    cleanText
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s]/gu, "")
-        .split(" ")
-        .forEach(word => {
-            if (!stopWords.has(word) && word.length > 2) {
-                wordFreq[word] = (wordFreq[word] || 0) + 1;
-            }
-        });
-
-    const scored = sentences.map(sentence => {
-        const words = sentence
-            .toLowerCase()
-            .replace(/[^\p{L}\p{N}\s]/gu, "")
-            .split(" ");
-
-        let score = 0;
-        words.forEach(w => {
-            if (wordFreq[w]) score += wordFreq[w];
-        });
-
-        return { sentence: sentence.trim(), score };
+async function summarizeWithAI(text) {
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: text,
+      }),
     });
 
-    return scored
-        .sort((a, b) => b.score - a.score)
-        .slice(0, maxSentences)
-        .map(s => "• " + s.sentence)
-        .join("<br>");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Backend error:", errorData);
+      return `Lỗi: ${response.status} - ${
+        errorData.message || "Không thể kết nối backend"
+      }`;
+    }
+
+    const data = await response.json();
+
+    if (data.summary) {
+      return data.summary.trim();
+    } else {
+      console.error("Response lạ:", data);
+      return "Không lấy được nội dung tóm tắt từ Backend.";
+    }
+  } catch (error) {
+    console.error("Lỗi kết nối Backend:", error);
+    return "Lỗi kết nối API (Hãy chắc chắn Backend đang chạy tại port 5050).";
+  }
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "SUMMARIZE") {
-        const summary = summarizeLocal(msg.text, 3);
-        sendResponse({ summary });
-    }
+  if (msg.type === "SUMMARIZE") {
+    summarizeWithAI(msg.text).then((summary) => {
+      sendResponse({ summary });
+    });
+    return true;
+  }
 });

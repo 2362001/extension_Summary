@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Kiểm tra mt5-small Local</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        padding: 50px;
+        background: #f0f2f5;
+      }
+      .article-mock {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .summary-tooltip {
+        position: fixed;
+        z-index: 999999;
+        max-width: 320px;
+        background: #111;
+        color: #fff;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.4;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div style="text-align: center; margin-bottom: 20px">
+      <b>Test mt5-small:</b> Bôi đen đoạn văn bản bên dưới.
+    </div>
+
+    <div class="article-mock">
+      <h1>Kiểm tra Tóm tắt với google/mt5-small</h1>
+      <p>
+        Mô hình mt5-small là một phiên bản đa ngôn ngữ của mô hình T5
+        (Text-to-Text Transfer Transformer) do Google phát triển. Nó được huấn
+        luyện trên tập dữ liệu khổng lồ bao gồm hơn 100 ngôn ngữ khác nhau,
+        trong đó có tiếng Việt. Đây là một lựa chọn tuyệt vời cho các ứng dụng
+        nhẹ nhàng và cần tốc độ xử lý nhanh.
+      </p>
+      <p>
+        Việc tích hợp mô hình này thông qua Hugging Face Router API giúp chúng
+        ta có thể tóm tắt văn bản ngay lập tức mà không cần phải cài đặt các thư
+        viện học máy phức tạp trên máy tính cá nhân. Hãy thử bôi đen đoạn văn
+        này để xem kết quả.
+      </p>
+    </div>
+
+    <script>
+      const API_URL = "http://localhost:5050/api/summarize";
+
+      async function callHuggingFaceApi(text) {
+        console.log("Đang gửi tới mt5-small:", text);
+        try {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: text,
+            }),
+          });
+
+          const data = await response.json();
+          console.log("Kết quả API:", data);
+
+          // Xử lý response từ Router API (có thể là array hoặc object)
+          let resultText = "";
+          if (Array.isArray(data) && data[0] && data[0].generated_text) {
+            resultText = data[0].generated_text;
+          } else if (data.generated_text) {
+            resultText = data.generated_text;
+          }
+
+          if (resultText) {
+            return resultText.trim();
+          } else if (data.error && data.error.includes("loading")) {
+            return "⏳ Model đang tải... Vui lòng thử lại sau 20 giây.";
+          }
+          return "Lỗi: " + (data.error || JSON.stringify(data));
+        } catch (error) {
+          return "Lỗi kết nối: " + error.message;
+        }
+      }
+
+      let tooltip;
+      document.addEventListener("mouseup", async (e) => {
+        if (tooltip && tooltip.contains(e.target)) return;
+        if (tooltip) tooltip.remove();
+
+        const selection = window.getSelection();
+        const text = selection.toString().trim();
+        if (text.length < 20) return;
+
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        tooltip = document.createElement("div");
+        tooltip.className = "summary-tooltip";
+        tooltip.innerHTML = "⏳ Đang tóm tắt (mt5-small)...";
+        tooltip.style.top = `${rect.bottom + window.scrollY + 8}px`;
+        tooltip.style.left = `${rect.left + window.scrollX}px`;
+        document.body.appendChild(tooltip);
+
+        const summary = await callHuggingFaceApi(text);
+        if (tooltip) tooltip.innerHTML = `<b>Tóm tắt:</b><br>${summary}`;
+      });
+    </script>
+  </body>
+</html>

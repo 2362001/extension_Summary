@@ -1,5 +1,5 @@
 // Token has been removed for security reasons
-const API_URL = "https://api-summarry.onrender.com/api/summarize";
+const API_URL = "http://localhost:5050/api/summarize";
 
 async function testSummarize() {
   const text =

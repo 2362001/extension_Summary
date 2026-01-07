@@ -82,53 +82,58 @@ function showTooltip(rect, initialContent) {
 }
 
 document.addEventListener("mouseup", (e) => {
-  // 1. Click vào tooltip thì bỏ qua
-  if (tooltip && tooltip.contains(e.target)) return;
+  // Kiểm tra xem extension có đang bật không
+  chrome.storage.local.get(["isEnabled"], (result) => {
+    if (result.isEnabled === false) return; // Nếu tắt thì không làm gì cả
 
-  // 2. Click ra ngoài thì tắt tooltip
-  if (tooltip) {
-    tooltip.remove();
-    tooltip = null;
-  }
+    // 1. Click vào tooltip thì bỏ qua
+    if (tooltip && tooltip.contains(e.target)) return;
 
-  // 3. Lấy text bôi đen
-  const selection = window.getSelection();
-  const text = selection.toString().trim();
+    // 2. Click ra ngoài thì tắt tooltip
+    if (tooltip) {
+      tooltip.remove();
+      tooltip = null;
+    }
 
-  if (text.length < 30) {
-    pendingSummary = null;
-    lastSelection = "";
-    return;
-  }
+    // 3. Lấy text bôi đen
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
 
-  // Nếu bôi đen đoạn mới, bắt đầu tóm tắt ngầm ngay
-  if (text !== lastSelection) {
-    lastSelection = text;
-    pendingSummary = {
-      status: "loading",
-      rect: selection.getRangeAt(0).getBoundingClientRect(),
-    };
+    if (text.length < 30) {
+      pendingSummary = null;
+      lastSelection = "";
+      return;
+    }
 
-    chrome.runtime.sendMessage({ type: "SUMMARIZE", text }, (res) => {
-      if (lastSelection === text && pendingSummary) {
-        pendingSummary = {
-          status: "ready",
-          summary:
-            res && res.summary
-              ? res.summary
-              : "Lỗi: Server không phản hồi hoặc gặp sự cố.",
-          rect: pendingSummary.rect,
-        };
+    // Nếu bôi đen đoạn mới, bắt đầu tóm tắt ngầm ngay
+    if (text !== lastSelection) {
+      lastSelection = text;
+      pendingSummary = {
+        status: "loading",
+        rect: selection.getRangeAt(0).getBoundingClientRect(),
+      };
 
-        if (tooltip) {
-          const contentDiv = tooltip.querySelector(".summary-content");
-          if (contentDiv && contentDiv.innerHTML.includes("Đang tải")) {
-            updateTooltipContent();
+      chrome.runtime.sendMessage({ type: "SUMMARIZE", text }, (res) => {
+        if (lastSelection === text && pendingSummary) {
+          pendingSummary = {
+            status: "ready",
+            summary:
+              res && res.summary
+                ? res.summary
+                : "Lỗi: Server không phản hồi hoặc gặp sự cố.",
+            rect: pendingSummary.rect,
+          };
+
+          if (tooltip) {
+            const contentDiv = tooltip.querySelector(".summary-content");
+            if (contentDiv && contentDiv.innerHTML.includes("Đang tải")) {
+              updateTooltipContent();
+            }
           }
         }
-      }
-    });
-  }
+      });
+    }
+  });
 });
 
 function updateTooltipContent() {
@@ -145,25 +150,29 @@ function updateTooltipContent() {
 
 // Lắng nghe phím Shift
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Shift" && lastSelection && !tooltip) {
-    const selection = window.getSelection();
-    const currentText = selection.toString().trim();
+  chrome.storage.local.get(["isEnabled"], (result) => {
+    if (result.isEnabled === false) return;
 
-    // Chỉ mở popup nếu text đang bôi đen khớp với text đã gửi đi tóm tắt ngầm
-    if (currentText === lastSelection) {
-      const rect = selection.getRangeAt(0).getBoundingClientRect();
+    if (e.key === "Shift" && lastSelection && !tooltip) {
+      const selection = window.getSelection();
+      const currentText = selection.toString().trim();
 
-      if (pendingSummary && pendingSummary.status === "ready") {
-        const contentDiv = showTooltip(rect, "");
-        const formatted = pendingSummary.summary.replace(/\n/g, "<br>");
-        contentDiv.innerHTML = `<b style="color: #4facfe;">Tóm tắt:</b><br>${formatted}`;
-      } else {
-        // Popup vẫn hiện ra ngay khi bấm Shift, thông báo đang tải
-        showTooltip(
-          rect,
-          "<i>⏳ Đang tải bản tóm tắt (đã bắt đầu khi bạn bôi đen)...</i>"
-        );
+      // Chỉ mở popup nếu text đang bôi đen khớp với text đã gửi đi tóm tắt ngầm
+      if (currentText === lastSelection) {
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+
+        if (pendingSummary && pendingSummary.status === "ready") {
+          const contentDiv = showTooltip(rect, "");
+          const formatted = pendingSummary.summary.replace(/\n/g, "<br>");
+          contentDiv.innerHTML = `<b style="color: #4facfe;">Tóm tắt:</b><br>${formatted}`;
+        } else {
+          // Popup vẫn hiện ra ngay khi bấm Shift, thông báo đang tải
+          showTooltip(
+            rect,
+            "<i>⏳ Đang tải bản tóm tắt (đã bắt đầu khi bạn bôi đen)...</i>"
+          );
+        }
       }
     }
-  }
+  });
 });

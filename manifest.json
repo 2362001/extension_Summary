@@ -3,12 +3,15 @@
   "name": "Highlight Summarizer",
   "version": "1.0",
   "description": "Bôi đen text để tóm tắt local",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "storage"],
   "host_permissions": [
     "https://router.huggingface.co/*",
     "http://localhost:5050/*",
     "https://api-summarry.onrender.com/*"
   ],
+  "action": {
+    "default_popup": "popup.html"
+  },
   "background": {
     "service_worker": "background.js"
   },
